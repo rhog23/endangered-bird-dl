@@ -44,8 +44,15 @@ def detect_bird(c):
             h = int(box[0][3])
 
             crop = image_array[y:h, x:w]
+            _, img_encoded = cv2.imencode(".png", cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
             bird_species, conf = classify_bird(crop)
-            results.append(zip(crop, bird_species, conf))
+            results.append(
+                {
+                    "cropped_image": base64.b64encode(img_encoded).decode("utf-8"),
+                    "label": bird_species,
+                    "confidence": conf,
+                }
+            )
 
     return results
 
@@ -53,9 +60,7 @@ def detect_bird(c):
 def classify_bird(image):
     input_shape = input_details[0]["shape"]
     input_data = np.expand_dims(
-        cv2.cvtColor(
-            cv2.resize(image, (input_shape[1], input_shape[2])), cv2.COLOR_BGR2RGB
-        ),
+        cv2.resize(image, (input_shape[1], input_shape[2])),
         axis=0,
     ).astype(np.float32)
     cls_model.set_tensor(input_details[0]["index"], input_data)
@@ -101,7 +106,7 @@ app.layout = html.Div(
 )
 
 
-def parse_contents(img, result):
+def parse_contents(img, results):
     return html.Div(
         className="max-w-sm rounded overflow-hidden shadow-lg",
         children=[
@@ -117,15 +122,26 @@ def parse_contents(img, result):
                         className="font-medium text-slate-900 text-sm mb-1 ",
                         children="Result",
                     ),
+                    # cropped image, label, and confidence section
                     html.Div(
-                        className="w-full bg-gray-200 rounded-full",
+                        className="w-full p-2 flex",
                         children=[
                             html.Div(
-                                className="bg-green-400 text-xs font-medium text-center p-0.5 leading-none rounded-full number",
-                                children=f"{label}, {conf:.2%}",
-                                style={"width": f"{conf:.2%}"},
+                                className="flex-column gap-4",
+                                children=[
+                                    html.Img(
+                                        src=f"data:image/png;base64,{result['cropped_image']}",
+                                        className="w-24 h-24",
+                                    ),
+                                    html.P(f"{result['label']}"),
+                                    html.Div(
+                                        className="mt-2 bg-green-400 text-xs font-medium text-center p-0.5 leading-none rounded-full number",
+                                        children=f"{result['confidence']:.2%}",
+                                        style={"width": f"{result['confidence']:.2%}"},
+                                    ),
+                                ],
                             )
-                            for crop, label, conf in result
+                            for result in results
                         ],
                     ),
                 ],
@@ -139,12 +155,8 @@ def parse_contents(img, result):
     Input("upload-image", "contents"),
 )
 def update_output(list_of_contents):
-    list_of_results = []
     if list_of_contents is not None:
-        for c in list_of_contents:
-            image_result = detect_bird(c)
-            list_of_results.append(zip(c, image_result))
-        children = [parse_contents(img, result) for img, result in list_of_results]
+        children = [parse_contents(c, detect_bird(c)) for c in list_of_contents]
         return children
 
 

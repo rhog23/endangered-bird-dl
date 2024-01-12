@@ -1,8 +1,10 @@
 from dash import Dash, dcc, html, Input, Output, State, callback
-import datetime, threading
+import cv2, threading, base64, io
 from bird_species_data import class_names
 from ultralytics import YOLO
 import tensorflow as tf
+from PIL import Image
+import numpy as np
 
 external_scripts = [
     "https://tailwindcss.com/",
@@ -27,8 +29,43 @@ def load_model():
     print("[INFO] Model sucessfully loaded ✅")
 
 
-model_loading_thread = threading.Thread(target=load_model)
-model_loading_thread.start()
+def detect_bird(c):
+    results = []
+    decoded_bytes = base64.b64decode(c.split(",")[1])
+    image = Image.open(io.BytesIO(decoded_bytes))
+    image_array = np.array(image)
+    det_result = det_model.predict(image, imgsz=192, classes=14, conf=0.5)
+    for result in det_result:
+        for box in result.boxes:
+            box = box.xyxy
+            x = int(box[0][0])
+            y = int(box[0][1])
+            w = int(box[0][2])
+            h = int(box[0][3])
+
+            crop = image_array[y:h, x:w]
+            bird_species, conf = classify_bird(crop)
+            results.append(zip(crop, bird_species, conf))
+
+    return results
+
+
+def classify_bird(image):
+    input_shape = input_details[0]["shape"]
+    input_data = np.expand_dims(
+        cv2.cvtColor(
+            cv2.resize(image, (input_shape[1], input_shape[2])), cv2.COLOR_BGR2RGB
+        ),
+        axis=0,
+    ).astype(np.float32)
+    cls_model.set_tensor(input_details[0]["index"], input_data)
+    cls_model.invoke()
+    output_data = cls_model.get_tensor(output_details[0]["index"])
+    bird_species = class_names[np.argmax(output_data)]
+    conf = np.max(output_data)
+
+    return bird_species, conf
+
 
 app = Dash(__name__, external_scripts=external_scripts)
 
@@ -64,13 +101,12 @@ app.layout = html.Div(
 )
 
 
-def parse_contents(contents):
-    confidence = 0.9
+def parse_contents(img, result):
     return html.Div(
         className="max-w-sm rounded overflow-hidden shadow-lg",
         children=[
             html.Img(
-                src=contents,
+                src=img,
                 className="w-full object-scale-down min-h-64 max-h-64 bg-slate-900",
             ),
             # label and confidence bar
@@ -86,9 +122,10 @@ def parse_contents(contents):
                         children=[
                             html.Div(
                                 className="bg-green-400 text-xs font-medium text-center p-0.5 leading-none rounded-full number",
-                                children=f"{confidence:.2%}",
-                                style={"width": f"{confidence:.2%}"},
+                                children=f"{label}, {conf:.2%}",
+                                style={"width": f"{conf:.2%}"},
                             )
+                            for crop, label, conf in result
                         ],
                     ),
                 ],
@@ -102,10 +139,16 @@ def parse_contents(contents):
     Input("upload-image", "contents"),
 )
 def update_output(list_of_contents):
+    list_of_results = []
     if list_of_contents is not None:
-        children = [parse_contents(c) for c in list_of_contents]
+        for c in list_of_contents:
+            image_result = detect_bird(c)
+            list_of_results.append(zip(c, image_result))
+        children = [parse_contents(img, result) for img, result in list_of_results]
         return children
 
 
 if __name__ == "__main__":
+    model_loading_thread = threading.Thread(target=load_model)
+    model_loading_thread.start()
     app.run(debug=True)

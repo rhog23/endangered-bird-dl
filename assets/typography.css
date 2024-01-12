@@ -1,0 +1,14 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz@9..40&family=DM+Serif+Display&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono&display=swap");
+
+* {
+  font-family: "DM Sans", sans-serif;
+}
+
+.custom-header-font {
+  font-family: "DM Serif Display", serif;
+}
+
+.number {
+  font-family: "DM Mono", monospace;
+}

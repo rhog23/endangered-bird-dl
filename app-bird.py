@@ -98,7 +98,7 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     id="output-image-upload",
-                    className="grid grid-cols-3 gap-4 self-center",
+                    className="grid grid-cols-5 gap-4 self-center",
                 ),
             ],
         )

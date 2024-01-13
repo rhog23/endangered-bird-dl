@@ -1,9 +1,9 @@
-from dash import Dash, dcc, html, Input, Output, State, callback
+from dash import Dash, dcc, html, Input, Output, callback
 import cv2, threading, base64, io
 from bird_species_data import class_names
 from ultralytics import YOLO
 import tensorflow as tf
-from PIL import Image
+from PIL import Image, ImageEnhance
 import numpy as np
 
 external_scripts = [
@@ -98,7 +98,7 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     id="output-image-upload",
-                    className="grid grid-cols-5 gap-4 self-center",
+                    className="grid grid-cols-3 gap-4 self-center",
                 ),
             ],
         )
@@ -119,25 +119,35 @@ def parse_contents(img, results):
                 className="px-6 py-4",
                 children=[
                     html.Div(
-                        className="font-medium text-slate-900 text-sm mb-1 ",
-                        children="Result",
+                        className="font-medium text-slate-900 mb-1 ",
+                        children="Identification Result",
                     ),
                     # cropped image, label, and confidence section
                     html.Div(
-                        className="w-full p-2 flex",
+                        className="overflow-auto min-h-48 relative max-w-sm mx-auto bg-white flex flex-col divide-y",
                         children=[
                             html.Div(
-                                className="flex-column gap-4",
+                                className="flex items-center gap-4 p-4 shadow-lg",
                                 children=[
                                     html.Img(
                                         src=f"data:image/png;base64,{result['cropped_image']}",
-                                        className="w-24 h-24",
+                                        className="min-w-16 h-16 rounded-full object-scale-down bg-slate-900",
                                     ),
-                                    html.P(f"{result['label']}"),
                                     html.Div(
-                                        className="mt-2 bg-green-400 text-xs font-medium text-center p-0.5 leading-none rounded-full number",
-                                        children=f"{result['confidence']:.2%}",
-                                        style={"width": f"{result['confidence']:.2%}"},
+                                        className="w-full flex flex-col",
+                                        children=[
+                                            html.P(
+                                                className="font-medium text-sm text-slate-900",
+                                                children=f"{result['label']}",
+                                            ),
+                                            html.Span(
+                                                className="bg-green-400 text-xs font-medium text-center p-0.5 leading-none rounded-full number",
+                                                children=f"{result['confidence']:.2%}",
+                                                style={
+                                                    "width": f"{result['confidence']:.2%}"
+                                                },
+                                            ),
+                                        ],
                                     ),
                                 ],
                             )

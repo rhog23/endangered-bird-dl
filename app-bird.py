@@ -1,5 +1,7 @@
 from dash import Dash, dcc, html, Input, Output, callback
 import cv2, threading, base64, io
+
+from matplotlib.pyplot import cla
 from bird_species_data import class_names
 from ultralytics import YOLO
 import tensorflow as tf
@@ -19,7 +21,7 @@ def load_model():
     global input_details
     global output_details
 
-    det_model = YOLO("assets/yolov8s-lite/yolov8s_float16.tflite", task="detect")
+    det_model = YOLO("assets/models/yolov8s_float16.tflite", task="detect")
     cls_model = tf.lite.Interpreter(model_path="assets/models/endb-cls-mb3.tflite")
     cls_model.allocate_tensors()
 

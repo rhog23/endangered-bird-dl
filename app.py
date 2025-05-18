@@ -47,7 +47,7 @@ def detect_bird(c):
     decoded_bytes = base64.b64decode(c.split(",")[1])
     image = Image.open(io.BytesIO(decoded_bytes))
     image_array = np.array(image)
-    det_result = det_model.predict(image, classes=14, conf=0.5, device=0)
+    det_result = det_model.predict(image, classes=14, conf=0.3, device=0)
     for result in det_result:
         for box in result.boxes:
             box = box.xyxy
